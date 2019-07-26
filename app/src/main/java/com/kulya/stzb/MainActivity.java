@@ -14,7 +14,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        sheniqngquanxian();
+        applicationPermission();
     }
 
     @Override
@@ -24,7 +24,7 @@ public class MainActivity extends AppCompatActivity {
         stopService(intent);
     }
 
-    private void sheniqngquanxian() {
+    private void applicationPermission() {
         if (Build.VERSION.SDK_INT >= 23) {
             if (Settings.canDrawOverlays(MainActivity.this)) {
                 Intent intent = new Intent(this, WindowService.class);

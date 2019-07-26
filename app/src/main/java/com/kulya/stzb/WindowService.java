@@ -106,16 +106,19 @@ public class WindowService extends Service {
         int height = metric.heightPixels;   // 屏幕高度（像素）
         float density = metric.density;      // 屏幕密度（0.75 / 1.0 / 1.5）
         int densityDpi = metric.densityDpi;
+
         //设置窗口初始停靠位置.
         params.gravity = Gravity.LEFT | Gravity.TOP;
         //设置悬浮窗口长宽数据.
         //注意，这里的width和height均使用px而非dp.这里我偷了个懒
         //如果你想完全对应布局设置，需要先获取到机器的dpi
         //px与dp的换算为px = dp * (dpi / 160).
-        final int window_x = 90 * (densityDpi / 160);
-        final int window_y = 30 * (densityDpi / 160);
+        //注意运算规则！！！！！！！
+         final int window_x = (int)(90 * (densityDpi / 160.0));
+        final int window_y = (int)(30 * (densityDpi / 160.0));
         params.width = window_x;
         params.height = window_y;
+        Log.d(TAG, "createToucher: "+densityDpi+";"+window_x+";"+window_y);
         //获取浮动窗口视图所在布局.
         toucherLayout = (ConstraintLayout) LayoutInflater.from(getApplication()).inflate(R.layout.window, null);
 //        //添加toucherlayout
