@@ -15,6 +15,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.SystemClock;
 import android.text.format.DateFormat;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -24,6 +25,8 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
+
+import java.security.PrivilegedAction;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.NotificationCompat;
@@ -40,7 +43,20 @@ public class WindowService extends Service {
     //状态栏高度.（接下来会用到）
     int statusBarHeight = -1;
 
-    public WindowService() {
+    class TimeThread extends Thread {
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    Thread.sleep(1000);
+                    Message msg = new Message();
+                    msg.what = 1;  //消息(一个整型值)
+                    mHandler.sendMessage(msg);// 每隔1秒发送一个msg给mHandler
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     @SuppressLint("HandlerLeak")
@@ -63,6 +79,84 @@ public class WindowService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        startService();
+        createToucher();
+        new TimeThread().start();
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void createToucher() {
+        //赋值WindowManager&LayoutParam.
+        params = new WindowManager.LayoutParams();
+        windowManager = (WindowManager) getApplication().getSystemService(Context.WINDOW_SERVICE);
+        //设置type.系统提示型窗口，一般都在应用程序窗口之上.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        } else {
+            params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
+        }
+        //设置效果为背景透明.
+        params.format = PixelFormat.RGBA_8888;
+        //设置flags.不可聚焦及不可使用按钮对悬浮窗进行操控.
+        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        //获取dpi
+        DisplayMetrics metric = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(metric);
+        int width = metric.widthPixels;     // 屏幕宽度（像素）
+        int height = metric.heightPixels;   // 屏幕高度（像素）
+        float density = metric.density;      // 屏幕密度（0.75 / 1.0 / 1.5）
+        int densityDpi = metric.densityDpi;
+        //设置窗口初始停靠位置.
+        params.gravity = Gravity.LEFT | Gravity.TOP;
+        //设置悬浮窗口长宽数据.
+        //注意，这里的width和height均使用px而非dp.这里我偷了个懒
+        //如果你想完全对应布局设置，需要先获取到机器的dpi
+        //px与dp的换算为px = dp * (dpi / 160).
+        final int window_x = 90 * (densityDpi / 160);
+        final int window_y = 30 * (densityDpi / 160);
+        params.width = window_x;
+        params.height = window_y;
+        //获取浮动窗口视图所在布局.
+        toucherLayout = (ConstraintLayout) LayoutInflater.from(getApplication()).inflate(R.layout.window, null);
+//        //添加toucherlayout
+        try {
+            windowManager.addView(toucherLayout, params);
+        } catch (Exception e) {
+
+        }
+        //主动计算出当前View的宽高信息.
+        toucherLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        //用于检测状态栏高度.
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            statusBarHeight = getResources().getDimensionPixelSize(resourceId);
+        }
+         final int point[] = new int[2];
+        //浮动窗口按钮.
+        imageButton1 = toucherLayout.findViewById(R.id.imageButton1);
+        imageButton1.setOnTouchListener(new View.OnTouchListener() {
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        point[0] = (int) event.getRawX()-params.x-window_x / 2;
+                        point[1] = (int) event.getRawY()-params.y-statusBarHeight-window_y / 2;
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        params.x = (int) event.getRawX() - window_x / 2 - point[0];
+                        //这就是状态栏偏移量用的地方
+                        params.y = (int) event.getRawY() - window_y / 2 - point[1] - statusBarHeight;
+                        windowManager.updateViewLayout(toucherLayout, params);
+                        break;
+                }
+                return false;
+            }
+        });
+
+    }
+
+    private void startService() {
         NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel notificationChannel = new NotificationChannel("default", "name", NotificationManager.IMPORTANCE_HIGH);
@@ -78,79 +172,6 @@ public class WindowService extends Service {
                 .build();
         //显示通知，每条通知的id都要不同
         startForeground(1, notification);
-        createToucher();
-        new TimeThread().start();
-    }
-
-    private void createToucher() {
-        //赋值WindowManager&LayoutParam.
-        params = new WindowManager.LayoutParams();
-        windowManager = (WindowManager) getApplication().getSystemService(Context.WINDOW_SERVICE);
-        //设置type.系统提示型窗口，一般都在应用程序窗口之上.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        } else {
-            params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
-        }
-
-        //设置效果为背景透明.
-        params.format = PixelFormat.RGBA_8888;
-        //设置flags.不可聚焦及不可使用按钮对悬浮窗进行操控.
-        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-
-        //设置窗口初始停靠位置.
-        params.gravity = Gravity.LEFT | Gravity.TOP;
-        params.x = 0;
-        params.y = 0;
-
-        //设置悬浮窗口长宽数据.
-        //注意，这里的width和height均使用px而非dp.这里我偷了个懒
-        //如果你想完全对应布局设置，需要先获取到机器的dpi
-        //px与dp的换算为px = dp * (dpi / 160).
-        params.width = 300;
-        params.height = 300;
-
-        LayoutInflater inflater = LayoutInflater.from(getApplication());
-        //获取浮动窗口视图所在布局.
-        toucherLayout = (ConstraintLayout) inflater.inflate(R.layout.window, null);
-//        //添加toucherlayout
-        try {
-            windowManager.addView(toucherLayout, params);
-        } catch (Exception e) {
-
-        }
-
-        Log.i(TAG, "toucherlayout-->left:" + toucherLayout.getLeft());
-        Log.i(TAG, "toucherlayout-->right:" + toucherLayout.getRight());
-        Log.i(TAG, "toucherlayout-->top:" + toucherLayout.getTop());
-        Log.i(TAG, "toucherlayout-->bottom:" + toucherLayout.getBottom());
-
-        //主动计算出当前View的宽高信息.
-        toucherLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-
-        //用于检测状态栏高度.
-        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            statusBarHeight = getResources().getDimensionPixelSize(resourceId);
-        }
-        Log.i(TAG, "状态栏高度为:" + statusBarHeight);
-
-        //浮动窗口按钮.
-        imageButton1 =  toucherLayout.findViewById(R.id.imageButton1);
-            long[] hints = new long[2];
-        imageButton1.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                //ImageButton我放在了布局中心，布局一共300dp
-                params.x = (int) event.getRawX() - 150;
-                //这就是状态栏偏移量用的地方
-                params.y = (int) event.getRawY() - 150 - statusBarHeight;
-                windowManager.updateViewLayout(toucherLayout, params);
-                return false;
-            }
-        });
-
-        //其他代码...
     }
 
     @Override
@@ -164,24 +185,8 @@ public class WindowService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
         return null;
         // throw new UnsupportedOperationException("Not yet implemented");
     }
 
-    class TimeThread extends Thread {
-        @Override
-        public void run() {
-            do {
-                try {
-                    Thread.sleep(1000);
-                    Message msg = new Message();
-                    msg.what = 1;  //消息(一个整型值)
-                    mHandler.sendMessage(msg);// 每隔1秒发送一个msg给mHandler
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            } while (true);
-        }
-    }
 }
