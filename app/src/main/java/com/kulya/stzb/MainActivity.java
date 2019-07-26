@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         } else {
-            //SDK在23以下，不用管.
+            //SDK在23以下，不用管
             Intent intent = new Intent(this, WindowService.class);
             startService(intent);
         }
