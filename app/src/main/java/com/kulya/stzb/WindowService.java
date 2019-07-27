@@ -34,7 +34,6 @@ public class WindowService extends Service {
     private Thread timeThread;
     private NumberPicker picker;
     private NumberPicker picker2;
-    private EditText a;
     private Button b;
     private Button c;
     private Button countdown;
