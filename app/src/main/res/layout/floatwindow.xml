@@ -21,27 +21,6 @@
 
         <include layout="@layout/floatmenu"
             android:id="@+id/hy"/>
-        <Button
-            android:id="@+id/b"
-            android:layout_width="90dp"
-            android:layout_height="30dp"
-            android:layout_marginBottom="20dp"
-            android:background="@drawable/shap"
-            android:text="b"
-            android:textColor="@color/textcolor"
-            android:textSize="14dp"
-            android:visibility="gone" />
-
-        <Button
-            android:id="@+id/c"
-            android:layout_width="90dp"
-            android:layout_height="30dp"
-            android:layout_marginBottom="20dp"
-            android:background="@drawable/shap"
-            android:text="c"
-            android:textColor="@color/textcolor"
-            android:textSize="14dp"
-            android:visibility="gone" />
     </LinearLayout>
 
 
