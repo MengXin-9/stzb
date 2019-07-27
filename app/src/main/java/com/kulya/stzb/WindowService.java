@@ -80,9 +80,6 @@ public class WindowService extends Service {
             super.handleMessage(msg);
             switch (msg.what) {
                 case 1:
-                    long sysTime = System.currentTimeMillis();
-                    CharSequence sysTimeStr = DateFormat.format("hh:mm:ss", sysTime);
-
                     Calendar calendar = Calendar.getInstance();
                      minute = calendar.get(Calendar.MINUTE);
                      second = calendar.get(Calendar.SECOND);
